@@ -46,9 +46,7 @@ class HIDF(nn.Module):
         self.proto_cell_type_matrix = nn.Parameter(self.proto_cell_type_matrix)
 
         self.gene_number = proto_matrix.shape[1]
-
         self.input_dim = proto_matrix.shape[1]
-
 
         self.gene_offset_parameter = nn.Parameter(torch.ones(size=(1, self.gene_number), dtype=torch.float32))
         self.st_offset_parameter = nn.Parameter(torch.ones(size=(self.st_gene_matrix.shape[0], 1), dtype=torch.float32))
@@ -79,19 +77,9 @@ class HIDF(nn.Module):
         self.proto_gene_matrix.requires_grad = False
 
     def update_memory_bank(self, st_index, tmp_st_cell_type_matrix):
-        '''
-        更新每个spot中对应的细胞类型组成内容
-        :param st_index:
-        :param tmp_st_cell_matrix:
-        :return:
-        '''
         self.moment_cell_type_mapping_matrix[st_index, :] = tmp_st_cell_type_matrix
 
     def forward_sc_st(self, index):
-        '''
-        :param st_index: st index
-        :return:
-        '''
         st_index = index
         index_mapping_matrix = self.mapping_matrix[:, st_index]
         mapping_matrix = torch.softmax(index_mapping_matrix, dim=0)

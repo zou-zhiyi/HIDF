@@ -11,8 +11,8 @@ from models.deconv_dataset import Spatial_Exp_Dataset
 from models.deconv_model import HIDF
 from models.deconv_trainer import HIDF_Trainer
 from models.train import Context
-from models.utils import set_seed, check_anndata, conver_adata_X_to_numpy, write_to_h5ad, RMSE, \
-    softmax_to_logits_matrix, visual_total_loss
+from models.utils import set_seed, check_anndata, conver_adata_X_to_numpy, RMSE, \
+    softmax_to_logits_matrix
 import os
 import pandas as pd
 import scanpy as sc

@@ -325,36 +325,6 @@ def write_to_h5ad(anndata, filepath, copy=False):
     if copy:
         anndata.write_h5ad(filepath + "_copy")
 
-def visual_total_loss(rec_gene_list, constraint_loss_list, regular_loss_list, save_path):
-    now = datetime.datetime.now()
-    plt.figure(figsize=(8, 4))  # 设置画布大小（可选）
-    # 绘制折线图
-    plt.plot(rec_gene_list)
-    # 添加标签和标题
-    plt.xlabel("epoch")
-    plt.ylabel("rec gene loss")
-    # 显示图表
-    plt.savefig(f'{save_path}/rec_gene_loss_{now}.png')
-
-    plt.figure(figsize=(8, 4))  # 设置画布大小（可选）
-    # 绘制折线图
-    plt.plot(constraint_loss_list)
-    # 添加标签和标题
-    plt.xlabel("epoch")
-    plt.ylabel("constrain loss")
-    # 显示图表
-    plt.savefig(f'{save_path}/constrain_loss_{now}.png')
-
-    plt.figure(figsize=(8, 4))  # 设置画布大小（可选）
-    # 绘制折线图
-    plt.plot(regular_loss_list)
-    # 添加标签和标题
-    plt.xlabel("epoch")
-    plt.ylabel("regular loss")
-    # 显示图表
-    plt.savefig(f'{save_path}/regular_loss_{now}.png')
-
-
 def stratify_split(total_data, random_seed=None, test_size=0.1, label_list=None):
     # print(Counter(total_data.obs['Cluster']))
     if label_list is not None:
@@ -376,8 +346,6 @@ def calculate_score(true_label, pred_label):
     f1_scores_macro = f1_score(true_label, pred_label, average='macro')
     f1_scores_micro = f1_score(true_label, pred_label, average='micro')
     f1_scores_weighted = f1_score(true_label, pred_label, average='weighted')
-    # print('acc:', acc, 'ari:', ari, 'f1_scores_median:', f1_scores_median, 'f1_scores_macro:',
-    #       f1_scores_macro, 'f1_scores_micro:', f1_scores_micro, 'f1_scores_weighted:', f1_scores_weighted)
     return acc, ari, f1_scores_median, f1_scores_macro, f1_scores_micro, f1_scores_weighted
 
 
@@ -396,19 +364,12 @@ def set_seed(seed=None):
     if seed is not None:
         os.environ['PYTHONHASHSEED'] = str(seed)
         torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)  # 让显卡产生的随机数一致
-        torch.cuda.manual_seed_all(seed)  # 多卡模式下，让所有显卡生成的随机数一致？这个待验证
-        np.random.seed(seed)  # numpy产生的随机数一致
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        np.random.seed(seed)
         random.seed(seed)
         torch.backends.cudnn.deterministic = True
 
-    # CUDA中的一些运算，如对sparse的CUDA张量与dense的CUDA张量调用torch.bmm()，它通常使用不确定性算法。
-    # 为了避免这种情况，就要将这个flag设置为True，让它使用确定的实现。
-    # torch.backends.cudnn.deterministic = True
-
-    # 设置这个flag可以让内置的cuDNN的auto-tuner自动寻找最适合当前配置的高效算法，来达到优化运行效率的问题。
-    # 但是由于噪声和不同的硬件条件，即使是同一台机器，benchmark都可能会选择不同的算法。为了消除这个随机性，设置为 False
-    # torch.backends.cudnn.benchmark = False
 
 
 def drawPieMarker(xs, ys, ratios, sizes, colors, save_path, rasterize=False):
@@ -462,23 +423,6 @@ def drawPieMarker(xs, ys, ratios, sizes, colors, save_path, rasterize=False):
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
 
-# def drawPieMarker(xs, ys, ratios, sizes, colors):
-#     fig, ax = plt.subplots(figsize=(8, 6))
-#     for i in range(len(xs)):
-#         if i%100 == 0:
-#             print(f'draw {i} pie')
-#         previous = 0
-#         rat = ratios[i]
-#         for color, ratio in zip(colors, rat):
-#             this = 2 * np.pi * ratio + previous
-#             x = [0] + np.cos(np.linspace(previous, this, 10)).tolist() + [0]
-#             y = [0] + np.sin(np.linspace(previous, this, 10)).tolist() + [0]
-#             xy = np.column_stack([x, y])
-#             previous = this
-#             ax.scatter(xs[i], ys[i],
-#                        **{'marker': xy, 's': np.abs(xy).max() ** 2 * np.array(sizes), 'facecolor': color})
-#     plt.savefig('output_plot.png', dpi=300, bbox_inches='tight')  # 保存为 PNG 文件，分辨率 300 dpi
-#     plt.close()  # 关闭图形（避免内存泄漏）
 def calculate_skewness_kurtosis(data):
     skewness = stats.skew(data)
     kurtosis = stats.kurtosis(data)
@@ -535,73 +479,6 @@ def calculate_RMSE_JSD(save_path, times=5):
     rmse_df.to_csv(f'{save_path}/test_rmse.csv')
     # print(f'cell type"{col}, jsd:{jsd}, rmse:{rmse}')
     return np.mean(total_jsd), np.mean(total_rmse)
-
-def calculate_PCC(save, begin, end, spot_number, sigma):
-    st_omics_adata_origin = check_anndata(f'E:/pyproject/STmin/Deconv/multiomics/mouse brain/simulating/spatial/simulating2/pattern2_{begin}_{end}_{spot_number}_{sigma}/spatial_atac_pattern_1.h5ad')
-    sc_omics_adata = check_anndata(f'E:/pyproject/STmin/Deconv/multiomics/mouse brain/simulating/single/atac.h5ad')
-    st_rna_adata_origin = check_anndata(f'E:/pyproject/STmin/Deconv/multiomics/mouse brain/simulating/spatial/simulating2/pattern2_{begin}_{end}_{spot_number}_{sigma}/spatial_rna_pattern_1.h5ad')
-
-    # 筛选每个细胞类型的特异性omics数据
-    sc.pp.normalize_total(sc_omics_adata)
-    sc.pp.log1p(sc_omics_adata)
-    sc.tl.rank_genes_groups(sc_omics_adata, groupby='cell_type', n_genes=None)
-    celltype = sc_omics_adata.obs['cell_type'].unique().tolist()
-    deg = sc.get.rank_genes_groups_df(sc_omics_adata, group=celltype)
-    deg = deg[deg['logfoldchanges'] > 0.5]
-    deg = deg[deg['pvals_adj'] < 0.01]
-    # deg_names = deg['names'].str.lower().unique().tolist()
-    deg_names = deg['names'].unique().tolist()
-
-    rec_atac_adata = check_anndata(f'{save}/deconv_rec_atac.h5ad')
-    rec_rna_adata = check_anndata(f'{save}/deconv_rec_rna.h5ad')
-
-    st_omics_adata_origin = st_omics_adata_origin[:, deg_names].copy()
-    rec_atac_adata = rec_atac_adata[:, deg_names].copy()
-
-    st_rna_adata_origin.var_names = st_rna_adata_origin.var_names.str.lower().tolist()
-    st_rna_adata_origin = st_rna_adata_origin[:, rec_rna_adata.var_names.tolist()].copy()
-
-    sc.pp.normalize_total(st_omics_adata_origin)
-    sc.pp.log1p(st_omics_adata_origin)
-    sc.pp.normalize_total(rec_atac_adata)
-    sc.pp.log1p(rec_atac_adata)
-
-    sc.pp.normalize_total(st_rna_adata_origin)
-    sc.pp.log1p(st_rna_adata_origin)
-    sc.pp.normalize_total(rec_rna_adata)
-    sc.pp.log1p(rec_rna_adata)
-
-    # omics_rmse = RMSE(np.array(st_omics_adata_origin.X), np.array(rec_atac_adata.X))
-    # print(f'ATAC RMSE:{rmse}')
-    # rna_rmse = RMSE(np.array(st_rna_adata_origin.X), np.array(rec_rna_adata.X))
-    # print(f'RNA RMSE:{rmse}')
-
-    rna_feature_number = rec_rna_adata.shape[1]
-    omics_feature_number = rec_atac_adata.shape[1]
-    omics_cosine_score_list, omics_name_list = [], []
-    rna_cosine_score_list, rna_name_list = [], []
-    origin_omics = st_omics_adata_origin.X
-    rec_omics = np.array(rec_atac_adata.X)
-    origin_rna = st_rna_adata_origin.X
-    rec_rna = np.array(rec_rna_adata.X)
-
-    for i in range(omics_feature_number):
-        r = 1 - spatial.distance.cosine(origin_omics[:, i].tolist(), rec_omics[:, i].tolist())
-        omics_cosine_score_list.append(r)
-        omics_name_list.append(rec_atac_adata.var_names[i])
-
-    for i in range(rna_feature_number):
-        r = 1 - spatial.distance.cosine(origin_rna[:, i].tolist(), rec_rna[:, i].tolist())
-        rna_cosine_score_list.append(r)
-        rna_name_list.append(rec_rna_adata.var_names[i])
-
-    omics_cosine_score_list = np.array(omics_cosine_score_list)
-    rna_cosine_score_list = np.array(rna_cosine_score_list)
-    omics_name_list = np.array(omics_name_list)
-    rna_name_list = np.array(rna_name_list)
-
-    # print(omics_cosine_score_list[omics_cosine_score_list>0.5].shape)
-    return omics_cosine_score_list, rna_cosine_score_list
 
 def softmax_to_logits_matrix(softmax_matrix, reference_index=None):
     """
@@ -672,97 +549,3 @@ def softmax_to_logits_multi_matrix(softmax_matrix, reference_index=None):
     logits = np.log(softmax_matrix + 1e-9) - np.log(ref_values + 1e-9)
 
     return logits
-
-def clustering(adata, n_clusters=7, radius=50, key='emb', method='mclust', start=0.1, end=3.0, increment=0.01, refinement=False):
-    """\
-    Spatial clustering based the learned representation.
-
-    Parameters
-    ----------
-    adata : anndata
-        AnnData object of scanpy package.
-    n_clusters : int, optional
-        The number of clusters. The default is 7.
-    radius : int, optional
-        The number of neighbors considered during refinement. The default is 50.
-    key : string, optional
-        The key of the learned representation in adata.obsm. The default is 'emb'.
-    method : string, optional
-        The tool for clustering. Supported tools include 'mclust', 'leiden', and 'louvain'. The default is 'mclust'.
-    start : float
-        The start value for searching. The default is 0.1.
-    end : float
-        The end value for searching. The default is 3.0.
-    increment : float
-        The step size to increase. The default is 0.01.
-    refinement : bool, optional
-        Refine the predicted labels or not. The default is False.
-
-    Returns
-    -------
-    None.
-
-    """
-    if adata.obsm['emb'].shape[-1] > 20:
-        pca = PCA(n_components=20, random_state=42)
-        embedding = pca.fit_transform(adata.obsm['emb'].copy())
-    else:
-        embedding = np.array(adata.obsm['emb']).copy()
-    adata.obsm['emb_pca'] = embedding
-
-    if method == 'mclust':
-        pass
-    elif method == 'leiden':
-        res = search_res(adata, n_clusters, use_rep='emb_pca', method=method, start=start, end=end, increment=increment)
-        sc.tl.leiden(adata, random_state=0, resolution=res)
-        adata.obs['domain_predict'] = adata.obs['leiden']
-    elif method == 'louvain':
-        res = search_res(adata, n_clusters, use_rep='emb_pca', method=method, start=start, end=end, increment=increment)
-        sc.tl.louvain(adata, random_state=0, resolution=res)
-        adata.obs['domain_predict'] = adata.obs['louvain']
-
-
-def search_res(adata, n_clusters, method='leiden', use_rep='emb', start=0.1, end=3.0, increment=0.01):
-    '''\
-    Searching corresponding resolution according to given cluster number
-
-    Parameters
-    ----------
-    adata : anndata
-        AnnData object of spatial data.
-    n_clusters : int
-        Targetting number of clusters.
-    method : string
-        Tool for clustering. Supported tools include 'leiden' and 'louvain'. The default is 'leiden'.
-    use_rep : string
-        The indicated representation for clustering.
-    start : float
-        The start value for searching.
-    end : float
-        The end value for searching.
-    increment : float
-        The step size to increase.
-
-    Returns
-    -------
-    res : float
-        Resolution.
-
-    '''
-    print('Searching resolution...')
-    label = 0
-    sc.pp.neighbors(adata, n_neighbors=50, use_rep=use_rep, metric='cosine')
-    for res in sorted(list(np.arange(start, end, increment)), reverse=True):
-        if method == 'leiden':
-            sc.tl.leiden(adata, random_state=0, resolution=res)
-            count_unique = len(pd.DataFrame(adata.obs['leiden']).leiden.unique())
-            print('resolution={}, cluster number={}'.format(res, count_unique))
-        elif method == 'louvain':
-            sc.tl.louvain(adata, random_state=0, resolution=res)
-            count_unique = len(pd.DataFrame(adata.obs['louvain']).louvain.unique())
-            print('resolution={}, cluster number={}'.format(res, count_unique))
-        if count_unique == n_clusters:
-            label = 1
-            break
-    assert label == 1, "Resolution is not found. Please try bigger range or smaller step!."
-    return res
