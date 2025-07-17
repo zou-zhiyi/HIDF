@@ -60,15 +60,15 @@ def filter_genes(sc_rna_adata: sc.AnnData, st_rna_adata: sc.AnnData, cell_type_k
     sc.pp.filter_cells(new_single_data, min_genes=1)
     return new_single_data, new_spatial_data
 
-def train_HIDF(save_path, reg_lambda=1e-5, type=10000, times=0, resolution=0.3, k=9):
+def train_HIDF(sc_reference_path, st_target_path,save_path, reg_lambda=1e-5, type=10000, times=0, resolution=0.3, k=9):
     set_seed(times)
     if not os.path.exists(save_path):
         os.makedirs(save_path)
 
     sc_rna_origin_adata = check_anndata(
-        f"../datasets/seqFISH/single/seqFISH_sc.h5ad", True)
+        sc_reference_path, True)
     st_rna_origin_adata = check_anndata(
-        f"../datasets/seqFISH//spatial/seqFISH_st{type}.h5ad", True)
+        st_target_path, True)
 
 
     print(f'sc shape:{sc_rna_origin_adata.shape}')
@@ -197,13 +197,7 @@ def train_HIDF(save_path, reg_lambda=1e-5, type=10000, times=0, resolution=0.3, 
             ctx.st_train_loader = DataLoader(st_rna_dataset, batch_size=batch_size, shuffle=True)
             ctx.pre_cell_type_matrix = torch.tensor(st_cell_type_matrix, dtype=torch.float32, device=device_name)
             ctx.reg_lambda = reg_lambda
-            ctx.constrain_loss_list = []
-            ctx.regular_loss_list = []
-            ctx.rec_gene_loss_list = []
             deconv_trainer.train(ctx)
-            constrain_loss_list = ctx.constrain_loss_list
-            regular_loss_list = ctx.regular_loss_list
-            rec_gene_loss_list = ctx.rec_gene_loss_list
 
             ctx = Context(epoch=epoch, batch_size=batch_size, save_model_path=None, random_seed=None)
             ctx.st_train_loader = DataLoader(st_rna_dataset, batch_size=batch_size, shuffle=False)
@@ -236,12 +230,15 @@ if __name__ == '__main__':
     reg_lambda = [1e-2]
     resolution_list = [0.3]
     k_list = [9]
+
     for type in type_list:
         for reg in reg_lambda:
             for resol in resolution_list:
                 for k in k_list:
                     save_path = f'seqFISH_{type}_simulating_reg{reg}_neighbor_{k}'
-                    train_HIDF(save_path=save_path, reg_lambda=reg, type=type, resolution=resol, k=k)
+                    sc_reference_path, st_target_path =f"../datasets/seqFISH/single/seqFISH_sc.h5ad", f"../datasets/seqFISH//spatial/seqFISH_st{type}.h5ad"
+                    train_HIDF(sc_reference_path=sc_reference_path, st_target_path=st_target_path,save_path=save_path,
+                               reg_lambda=reg, type=type, resolution=resol, k=k)
                     st_rna_origin_adata = check_anndata(
                         f"../datasets/seqFISH/spatial/seqFISH_st{type}.h5ad",
                         False)
@@ -258,8 +255,6 @@ if __name__ == '__main__':
                             print(f'RMSE {ct}:{rmse}')
                             deconv_result[ct] = [rmse]
                             total += rmse
-                            # jsd = JSD(predict_list, true_list)
-                            # print(f'JSD {ct}:{jsd}')
                     print(total)
                     deconv_result_df = pd.DataFrame(deconv_result)
                     deconv_result_df.to_csv(
