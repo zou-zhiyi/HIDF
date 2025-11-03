@@ -150,9 +150,6 @@ def train_HIDF(sc_reference_path, st_target_path,save_path, reg_lambda=1e-5, typ
             ctx.regular_loss_list = []
             ctx.rec_gene_loss_list = []
             deconv_trainer.train(ctx)
-            constrain_loss_list = ctx.constrain_loss_list
-            regular_loss_list = ctx.regular_loss_list
-            rec_gene_loss_list = ctx.rec_gene_loss_list
 
             target_dataloader = DataLoader(st_rna_dataset, batch_size=batch_size, shuffle=False)
             ctx = Context(epoch=epoch, batch_size=batch_size, save_model_path=None, random_seed=None)
@@ -197,6 +194,9 @@ def train_HIDF(sc_reference_path, st_target_path,save_path, reg_lambda=1e-5, typ
             ctx.st_train_loader = DataLoader(st_rna_dataset, batch_size=batch_size, shuffle=True)
             ctx.pre_cell_type_matrix = torch.tensor(st_cell_type_matrix, dtype=torch.float32, device=device_name)
             ctx.reg_lambda = reg_lambda
+            ctx.constrain_loss_list = []
+            ctx.regular_loss_list = []
+            ctx.rec_gene_loss_list = []
             deconv_trainer.train(ctx)
 
             ctx = Context(epoch=epoch, batch_size=batch_size, save_model_path=None, random_seed=None)
@@ -225,7 +225,7 @@ def train_HIDF(sc_reference_path, st_target_path,save_path, reg_lambda=1e-5, typ
 if __name__ == '__main__':
 
     # type_list = [3000, 6000, 10000]
-    type_list = [3000]
+    type_list = [10000]
 
     reg_lambda = [1e-2]
     resolution_list = [0.3]

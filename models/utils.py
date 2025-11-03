@@ -30,7 +30,55 @@ from torch import nn
 import copy
 import pandas as pd
 import gc
-import ast
+from distinctipy import get_colors
+
+def generate_distinct_colors(n_colors):
+
+    colors = get_colors(n_colors)
+    return colors
+
+def filter_genes(sc_rna_adata: sc.AnnData, st_rna_adata: sc.AnnData, cell_type_key='cell_type', n_genes=100,
+                 log_transform=True, use_deg=True, logfoldchanges=0.5, p_value=0.05, mean_expression_threshold=0):
+    sc.pp.filter_genes(sc_rna_adata, min_cells=3)
+    sc.pp.filter_genes(st_rna_adata, min_cells=3)
+
+    sc_rna_adata.var_names = sc_rna_adata.var_names.str.lower().tolist()
+    st_rna_adata.var_names = st_rna_adata.var_names.str.lower().tolist()
+
+    sc_rna_adata.var_names_make_unique()
+    st_rna_adata.var_names_make_unique()
+
+    gene_names_1 = set(sc_rna_adata.var_names.tolist())
+    gene_names_2 = set(st_rna_adata.var_names.tolist())
+    common_gene_names = list(gene_names_1 & gene_names_2)
+    print(f'common gene number:{len(common_gene_names)}')
+
+    new_single_data = sc_rna_adata[:, common_gene_names].copy()
+    new_spatial_data = st_rna_adata[:, common_gene_names].copy()
+    if use_deg:
+        sc.pp.filter_cells(new_single_data, min_genes=1)
+        if log_transform:
+            sc.pp.normalize_total(new_single_data, target_sum=1e4)
+            sc.pp.log1p(new_single_data)
+
+        # select DEG
+        sc.tl.rank_genes_groups(new_single_data, groupby=cell_type_key, n_genes=n_genes)
+        celltype = new_single_data.obs[cell_type_key].unique().tolist()
+        deg = sc.get.rank_genes_groups_df(new_single_data, group=celltype)
+        deg = deg[deg['logfoldchanges']>=logfoldchanges]
+        deg = deg[deg['pvals_adj']<p_value]
+        deg_gene_names = deg['names'].str.lower().unique().tolist()
+
+        mean_expression = np.mean(conver_adata_X_to_numpy(new_single_data.X), axis=0)
+        keep_genes = mean_expression >= mean_expression_threshold  # 表达水平过滤
+        keep_genes = new_single_data.var_names[keep_genes].tolist()
+        deg_gene_names = list(set(deg_gene_names) & set(keep_genes))
+        print(f'deg gene number:{len(deg_gene_names)}')
+
+        new_single_data = sc_rna_adata[:, deg_gene_names].copy()
+        new_spatial_data = st_rna_adata[:, deg_gene_names].copy()
+    sc.pp.filter_cells(new_single_data, min_genes=1)
+    return new_single_data, new_spatial_data
 
 
 class WordIdxDic:
@@ -372,7 +420,7 @@ def set_seed(seed=None):
 
 
 
-def drawPieMarker(xs, ys, ratios, sizes, colors, save_path, rasterize=False):
+def drawPieMarker(xs, ys, ratios, sizes, colors, save_path, rasterize=False, show=False):
     """
     使用 Wedge 绘制饼图标记。
 
@@ -421,6 +469,8 @@ def drawPieMarker(xs, ys, ratios, sizes, colors, save_path, rasterize=False):
     ax.set_ylim(min(ys) - max_size*10, max(ys) + max_size*10)
     # 保存图形
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
+    if show:
+        plt.show()
     plt.close()
 
 def calculate_skewness_kurtosis(data):

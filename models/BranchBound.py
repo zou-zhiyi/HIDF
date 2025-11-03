@@ -118,6 +118,7 @@ class Proto_Generator:
         rna_data = self.sc_rna_adata[self.current_cell_obs_name_list, :]
         self.current_cell_type_set_list = rna_data.obs[self.cell_type_key].unique().tolist()
         self.current_cell_type_number = len(self.current_cell_type_set_list)
+        self.current_cell_type_set_list.sort()
 
     def calculate_depth(self):
         return caculate_depth(self.root)
@@ -140,6 +141,7 @@ class Proto_Generator:
         self.current_cell_number = len(self.tree.current_node_name_list)
         rna_data = self.sc_rna_adata[self.current_cell_obs_name_list, :]
         self.current_cell_type_set_list = rna_data.obs[self.cell_type_key].unique().tolist()
+        self.current_cell_type_set_list.sort()
         self.current_cell_type_number = len(self.current_cell_type_set_list)
 
         if proto_latent_matrix is None:
@@ -175,6 +177,7 @@ class Proto_Generator:
         self.current_cell_number = len(self.tree.current_node_name_list)
         rna_data = self.sc_rna_adata[self.current_cell_obs_name_list, :]
         self.current_cell_type_set_list = rna_data.obs[self.cell_type_key].unique().tolist()
+        self.current_cell_type_set_list.sort()
         self.current_cell_type_number = len(self.current_cell_type_set_list)
 
         if proto_latent_matrix is None:
@@ -192,11 +195,14 @@ class Proto_Generator:
         for proto_type_map in next_proto_type_map_list:
             for k, v_list in proto_type_map.items():
                 index1 = pre_proto_type_set_map[k]
+                next_proto_number = len(v_list)
                 for v in v_list:
                     index2 = current_proto_type_set_map[v]
                     tmp_sim_data = sim_matrix[:, index1]
+                    tmp_sim_data = tmp_sim_data / next_proto_number
                     new_sim_matrix[:, index2] = tmp_sim_data
-
+        # normalize to 1
+        new_sim_matrix = new_sim_matrix / new_sim_matrix.sum(axis=1, keepdims=True)
         return new_proto_latent_matrix, new_sim_matrix
 
     def update_current_proto_matrix_with_multi_sim(self, weight_list, threshold, proto_latent_matrix, sim_matrix):
@@ -216,6 +222,7 @@ class Proto_Generator:
         rna_data = self.sc_rna_adata[self.current_cell_obs_name_list, :]
         self.current_cell_type_set_list = rna_data.obs[self.cell_type_key].unique().tolist()
         self.current_cell_type_number = len(self.current_cell_type_set_list)
+        self.current_cell_type_set_list.sort()
 
         if proto_latent_matrix is None:
             new_proto_latent_matrix = None
