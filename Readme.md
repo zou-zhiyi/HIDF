@@ -5,6 +5,10 @@ pytorch = 2.2.2
 # How to use HIDF
 We provide four Jupyter tutorials for researchers, please see in tutorial.
 
+# Hierarchical_simulating
+The preprocessing step about how to generate hierarchical simulating data can be see in path: "datasets/Hierarchical_simulating". \
+You need download GSE115746 data first, then run two python script: preprocess.py and simulate.py.
+
 # training_tutorial
 This Jupyter tutorial includes: training HIDF model, saving cell type deconvolution results, storing the cell-spot mapping matrix, and keeping the trained model parameters for interpretability analysis.
 
